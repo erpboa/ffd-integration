@@ -1,0 +1,291 @@
+.ffd-twbs {
+  /* image poster clicked, player class added using js */
+}
+.ffd-twbs .ui-content {
+  position: relative;
+  padding-top: 15px;
+  padding-bottom: 15px;
+}
+.ffd-twbs .ui_layout_spacer {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.ffd-twbs .ui-content h1,
+.ffd-twbs .ui-content h2,
+.ffd-twbs .ui-content .maintitle,
+.ffd-twbs .ui-content .title-element {
+  letter-spacing: 7.2px;
+  font-family: 'PT Serif Caption', serif;
+  font-weight: 500;
+}
+.ffd-twbs .ui-content h3,
+.ffd-twbs .ui-content h4,
+.ffd-twbs .ui-content .subtitle,
+.ffd-twbs .ui-content .caption-element {
+  letter-spacing: 2.4px;
+  font-family: 'PT Serif', serif;
+  font-weight: 500;
+}
+.ffd-twbs .ui_layout_icon_link_with_text {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.ffd-twbs .ui-content.has-bgcolor {
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+.ffd-twbs .iconlink-element {
+  padding-bottom: 15px;
+  padding-top: 15px;
+}
+.ffd-twbs .imgtext-element {
+  padding-top: 15px;
+  padding-bottom: 15px;
+}
+.ffd-twbs .ui-content .title-element {
+  padding: 0;
+  margin: 0;
+  padding-bottom: 30px;
+  width: 100%;
+}
+.ffd-twbs .ui-content.ui-has-bgcolor .title-element {
+  padding-bottom: 15px;
+}
+.ffd-twbs .ui_layout_properties_list .title-element {
+  padding-bottom: 0;
+}
+.ffd-twbs .icontext-element .title-element {
+  padding-bottom: 15px;
+}
+.ffd-twbs .ui-content .property-item-wrap .property-item {
+  margin-top: 15px;
+  padding-top: 0;
+}
+.ffd-twbs .ui-content .caption-element {
+  display: inline-block;
+  padding-top: 15px;
+  margin-top: 0;
+  font-weight: bold;
+  font-size: 16px;
+}
+.ffd-twbs .ui-content .text-element {
+  text-align: justify;
+  color: #333;
+}
+.ffd-twbs .ui-content .image-element img {
+  width: 100%;
+}
+.ffd-twbs .ui-content-first {
+  padding-top: 0;
+  margin-top: 0;
+}
+.ffd-twbs .ui-content-last {
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+.ffd-twbs .ctabtn-accordion .panel {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.ffd-twbs .ui-content-block {
+  display: block;
+}
+.ffd-twbs .ui-content .caption-element {
+  display: block;
+}
+.ffd-twbs .ui-content .iconlink-element {
+  text-align: center;
+}
+.ffd-twbs .ui-content .text-element {
+  color: #0B2546;
+}
+.ffd-twbs .ui-content .video-element {
+  position: relative;
+  padding-bottom: 56.25%;
+  /* 16:9 */
+  height: 0;
+}
+.ffd-twbs .ui-content .video-element img {
+  position: absolute;
+  display: block;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 20;
+  cursor: pointer;
+}
+.ffd-twbs .ui-content .video-element:after {
+  content: "";
+  position: absolute;
+  display: block;
+  background: url(../images/video-player.png) no-repeat 0 0;
+  top: 45%;
+  left: 45%;
+  width: 46px;
+  height: 36px;
+  z-index: 1;
+  cursor: pointer;
+  width: 128px;
+  height: 128px;
+  background-size: 45%;
+  background-position: top left;
+}
+.ffd-twbs .ui-content .video-element iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.ffd-twbs .ui-content .video-element.player img {
+  display: none;
+}
+.ffd-twbs .ui-content .video-element.player:after {
+  display: none;
+}
+.ffd-twbs .invisible {
+  visibility: hidden;
+}
+.ffd-twbs .ui-content .video-element {
+  position: relative;
+}
+.ffd-twbs .ui-content .video-element.loading:before {
+  content: "Loading...";
+  font-size: 40px;
+  color: #0B2546;
+  width: 100%;
+  text-align: center;
+  position: absolute;
+  top: 50%;
+  text-shadow: 0 1px 2px #333;
+}
+.ffd-twbs .ui-content .image-icon {
+  display: inline-block;
+}
+.ffd-twbs .ui-content .number-icon {
+  display: inline-block;
+}
+.ffd-twbs .ui-content a {
+  text-decoration: none;
+}
+.ffd-twbs .ui-content a:focus,
+.ffd-twbs .ui-content a:hover {
+  text-decoration: none;
+}
+.ffd-twbs .ui-content-gallery {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+}
+.ffd-twbs .ui-conetnt .ui-content-gallery-item {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+}
+.ffd-twbs .row.ui-content-center {
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap;
+}
+.ffd-twbs .ui-content-center,
+.ffd-twbs .ui-content-center > .ui-content-col {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-pack: center;
+  -webkit-box-pack: center;
+  justify-content: center;
+}
+.ffd-twbs .icontext-element {
+  padding-top: 15px;
+  padding-bottom: 15px;
+}
+.ffd-twbs .icontext-element .text-element {
+  color: #0B2546;
+}
+.ffd-twbs .icontext-element .title-element {
+  margin: 0;
+}
+.ffd-twbs .ui_layout_cta_button {
+  padding: 0;
+}
+.ffd-twbs .ui-conetnt-quicksearch .home-search-filter {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.ffd-twbs .home-slider-container {
+  padding-bottom: 0;
+}
+.ffd-twbs .ui_layout_image_with_text .image-element img,
+.ffd-twbs .ui_layout_image_with_caption .image-element img {
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+  height: 600px;
+  -o-object-fit: cover;
+  object-fit: cover;
+}
+.ffd-twbs .ui_layout_properties_list .property-item-advactions {
+  visibility: hidden;
+}
+.ffd-twbs .ui_layout_image_with_text .caption-element {
+  font-weight: bold;
+  padding: 10px 0;
+}
+.ffd-twbs .ui-content-paginationbtns {
+  padding: 15px 10px;
+  overflow: hidden;
+}
+.ffd-twbs .ui-content-loading-overlay {
+  display: none;
+}
+.ffd-twbs .ui-content-loading .ui-content-loading-overlay {
+  display: block;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.7);
+  top: 0;
+  left: 0;
+  z-index: 100;
+}
+.ffd-twbs .ui-content-loading .ui-content-loading-overlay .ui-content-loading-text {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  padding: 0px 15px;
+  font-size: 18px;
+  min-height: 100px;
+}
+.ffd-twbs .ui-content-loading .ui-content-loading-overlay .ui-content-loading-text img {
+  width: 64px;
+  height: 100%;
+}
+.ffd-twbs .ui-content-loading .ui-content-loading-overlay .ui-content-loading-text span {
+  padding: 15px 5px;
+}
+.ffd-twbs .ui-content .icon_link_icon {
+  object-fit: contain;
+}
+.ffd-twbs .ui-content-row {
+  display: flex;
+}
+.ffd-twbs .image_with_text_title .title-element {
+  width: 100%;
+}
+.ffd-twbs .ui-content-uicontentajaxload {
+  min-height: 64px;
+  width: 100%;
+  padding: 15px;
+}
+@media (max-width: 500px) {
+  .ffd-twbs .ui-content .title-element {
+    font-size: 26px;
+  }
+}
