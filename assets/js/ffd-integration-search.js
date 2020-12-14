@@ -511,11 +511,11 @@ var Search = {
 
             $('#nav-profile-tab', Search.vars.form).on('click', function(e){ //bvp
 
-                // for (var i = 0; i < Search.vars.data_search.length; i++) {
-                //   var a = Search.vars.data_search[i]
-                //     Search.codeAddress_second(Search.vars.data_geoco, Search.vars.data_map , a);
-                // }
-                // Search.vars.data_search = []
+                for (var i = 0; i < Search.vars.data_search.length; i++) {
+                  var a = Search.vars.data_search[i]
+                    Search.codeAddress_second(Search.vars.data_geoco, Search.vars.data_map , a);
+                }
+                Search.vars.data_search = []
             });
 
             $('.ffd-savesearch-btn', Search.vars.form).on('click', function(e){
@@ -897,8 +897,8 @@ var Search = {
                                 Search.vars.map.setZoom(zoom);
 
                                 bounds = Search.vars.bounds;
-                                Search.vars.map.setCenter(bounds.getCenter());
-                                Search.vars.map.fitBounds(bounds);
+                                // Search.vars.map.setCenter(bounds.getCenter());
+                                // Search.vars.map.fitBounds(bounds);
                                 map.removeClass('ffd-gmap-is-hidden');
                             }
 
@@ -1395,7 +1395,6 @@ var Search = {
             geocoder.geocode({'address': address}, function(results, status) {
               if (results==null) {
                 Search.vars.data_search.push(address)
-                  // Search.codeAddress(geocoder, map, address)
               }else{
               if (status === 'OK') {
                 map.setCenter(results[0].geometry.location);
@@ -1772,9 +1771,24 @@ var Search = {
                             });
                         }
                     });
+                    
                     $('html, body').animate({scrollTop:0}, 'fast');
                     Search.vars.number_properties = response.number_properties;
 
+                    Search.vars.form.find('[data-ffdtarget]').each(function (e) {
+                        var $self = $(this);
+                        if ($self.attr('data-ffdtarget') == 'input[name=min_price]'){
+                            if (parseInt($self.attr('data-value')) < parseInt(response.listingprice) || $self.attr('data-value') == ''){
+                                $self.addClass('inline-block list-disable');
+                            }
+                        }
+
+                        if ($self.attr('data-ffdtarget') == 'input[name=max_price]'){
+                            if (parseInt($self.attr('data-value')) < parseInt(response.listingprice) || $self.attr('data-value') == ''){
+                                $self.addClass('inline-block list-disable');
+                            }
+                        }
+                    });
 
                     resolve(payload);console.log('payload', payload);
                     Search.vars.form.trigger('response_ready', payload);
@@ -2019,7 +2033,7 @@ var Search = {
 
 
         Search.log('getSearchQuery Final:', query);
-
+console.log('query',query);
         return query;
     },
 
@@ -2089,7 +2103,7 @@ var Search = {
 
 
         Search.log('###SearchParams###', params);
-
+console.log('params', params);
         return params;
 
 

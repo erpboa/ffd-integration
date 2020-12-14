@@ -33,6 +33,7 @@ class FFD_Integration_Search {
 
     protected $paginator = '';
     protected $number_properties = 0;
+    protected $listingprice = 0;
      /**
 	 * Main FFD_Integration_Search Instance.
 	 *
@@ -1567,7 +1568,7 @@ class FFD_Integration_Search {
 
             // this code runs when there is no valid transient set
             $home = home_url();
-            $params = $_REQUEST;
+            $params = $_REQUEST; //var_dump($params);exit;
             $fields = 'ids';
             if( 'ids' === $fields ){
                 $select= array($fields);
@@ -1614,13 +1615,12 @@ class FFD_Integration_Search {
                 ", ARRAY_A);
 
             }else {*/
-                $trestle = $wpdb->get_results("
-                                                SELECT *
-                                                FROM Property
-                                                WHERE StandardStatus != 'Closed'
-                                                ORDER BY ListingKey asc
-                                                LIMIT 4500,1000
-                ", ARRAY_A);
+            $trestle = array();
+                /*$trestle = $wpdb->get_results("
+                                                 SELECT *
+            FROM Property
+            where ParcelNumber LIKE '74434322380%'
+                ", ARRAY_A);*/
 
                 /*$trestle = $wpdb->get_results("
                 SELECT p.ListingKey, p.StateOrProvince, p.PostalCode, p.StandardStatus, p.MlsStatus, p.ListingKey, p.ListPrice, p.MlsStatus
@@ -1631,227 +1631,229 @@ class FFD_Integration_Search {
             //}
 
             $current_date = date('Y-m-d');
-            /*foreach($trestle as $prop) {
-                //verify exits into table listing
-                $listing_id = $prop['ListingKey'];
+            if(false) {
+                foreach ($trestle as $prop) {
+                    //verify exits into table listing
+                    $listing_id = $prop['ListingKey'];
 
-                $ffd_listing = $wpdb->get_results("
+                    $ffd_listing = $wpdb->get_results("
                         SELECT pm.meta_value, p.ID
                         FROM wp_posts p
                         inner join wp_postmeta pm on pm.post_id = p.ID
                         WHERE pm.meta_key = 'ffd_id' and pm.meta_value = $listing_id
                         ", ARRAY_A);
 
-                $ffd_image = $wpdb->get_results("
+                    $ffd_image = $wpdb->get_results("
                     select med.MediaURL
                     from Media med
                     where med.ListingKey = $listing_id
                     order by med.Order asc
-                    ", ARRAY_A  );
+                    ", ARRAY_A);
 
-                $tam = count($ffd_image);
+                    $tam = count($ffd_image);
 
 
-                if ($ffd_listing == null && $prop['MlsStatus'] != 'Closed') {
+                    if ($ffd_listing == null && $prop['MlsStatus'] != 'Closed') {
 
-                    if ($tam > 0) {
-                        $json_image = 'a:' . $tam . ':{';
+                        if ($tam > 0) {
+                            $json_image = 'a:' . $tam . ':{';
 
-                        foreach ($ffd_image as $key => $image) {
-                            $tam_cad = strlen($image['MediaURL']);
-                            if ($key == $tam - 1) {
-                                $json_image .= 'i:' . $key . ';s:' . $tam_cad . ':"' . $image['MediaURL'] . '"';
-                            } else {
-                                $json_image .= 'i:' . $key . ';s:' . $tam_cad . ':"' . $image['MediaURL'] . '";';
+                            foreach ($ffd_image as $key => $image) {
+                                $tam_cad = strlen($image['MediaURL']);
+                                if ($key == $tam - 1) {
+                                    $json_image .= 'i:' . $key . ';s:' . $tam_cad . ':"' . $image['MediaURL'] . '"';
+                                } else {
+                                    $json_image .= 'i:' . $key . ';s:' . $tam_cad . ':"' . $image['MediaURL'] . '";';
+                                }
+
                             }
-
+                            $json_image .= ';}';
+                        } else {
+                            $json_image = null;
                         }
-                        $json_image .= ';}';
-                    } else {
-                        $json_image = null;
+
+                        $addr = $prop['StreetNumber'] . ' ' . $prop['StreetDirPrefix'] . ' ' . $prop['StreetName'] . ' #' . $prop['UnitNumber'];
+                        $address = ucwords($addr . ' ' . $prop['City'] . ', ' . $prop['StateOrProvince'] . ' ' . $prop['PostalCode']);
+
+                        $city = isset($prop['City']) ? $prop['City'] . '-' : '-';
+                        if ($city != '-')
+                            $city = str_replace(' ', '-', $city);
+
+                        $street = isset($prop['StreetName']) ? $prop['StreetName'] . '-' : '-';
+                        if ($street != '-')
+                            $street = str_replace(' ', '-', $city);
+
+                        $addr_guid = (isset($prop['StreetNumber']) && $prop['StreetNumber'] != '' ? $prop['StreetNumber'] . '-' : '') .
+                            (isset($prop['StreetDirPrefix']) && $prop['StreetDirPrefix'] != '' ? $prop['StreetDirPrefix'] . '-' : '') .
+                            $street .
+                            (isset($prop['UnitNumber']) && $prop['UnitNumber'] != '' ? $prop['UnitNumber'] . '-' : '') .
+                            $city .
+                            (isset($prop['StateOrProvince']) && $prop['StateOrProvince'] != '' ? $prop['StateOrProvince'] . '-' : '') .
+                            (isset($prop['PostalCode']) ? $prop['PostalCode'] : '');
+                        $addr_guid = $prop['ListingKey'] . '-' . strtolower($addr_guid);
+
+
+                        $protocol = isset($_SERVER['HTTP_X_FORWARDED_PROTO']) ? $_SERVER['HTTP_X_FORWARDED_PROTO'] : $_SERVER['REQUEST_SCHEME'];
+                        $server_name = isset($_SERVER['HTTP_X_FORWARDED_HOST']) ? $_SERVER['HTTP_X_FORWARDED_HOST'] : $_SERVER['SERVER_NAME'];
+                        $application = isset($_SERVER['CONTEXT_PREFIX']) ? $_SERVER['CONTEXT_PREFIX'] : 'livemodern';
+                        $guid = $protocol . '://' . $server_name . '/' . $application . '/listing/' . $addr_guid . '/';
+                        //insert into posts
+                        $wpdb->insert(
+                            'wp_posts',
+                            array(
+                                'post_author' => '1',
+                                'post_date' => $current_date,
+                                'post_date_gmt' => $current_date,
+                                'post_content' => $prop['PublicRemarks'],
+                                'post_title' => $address,
+                                'post_status' => 'publish',
+                                'comment_status' => 'closed',
+                                'ping_status' => 'closed',
+                                'post_name' => $addr_guid,//$prop['ListingId'],
+                                'post_modified' => $current_date,
+                                'post_modified_gmt' => $current_date,
+                                'guid' => $guid,
+                                'post_type' => 'listing'
+                            )
+                        );
+
+                        $lastid = $wpdb->insert_id;
+                        $image_default = $protocol . '://' . $server_name . $application . '/wp-content/plugins/ffd-integration/legacy-assets/images/placeholder.jpg';
+
+                        $ff_address_short = $prop['PostalCity'] . ', ' . $prop['StateOrProvince'] . ' ' . $prop['PostalCode'];
+
+                        //insert into wp_ffd_listings
+                        $wpdb->insert(
+                            'wp_ffd_listings',
+                            array(
+                                'ID' => $lastid,//'ID' => $prop['ListingKey'],
+                                'post_title' => $address,
+                                'post_type' => 'listing',
+                                'ffd_address_pb' => $ff_address_short,
+                                'ffd_fullbathrooms_pb' => 1 == $prop['BathroomsHalf'] ? $prop['BathroomsFull'] . '.5' : $prop['BathroomsFull'],
+                                'ffd_bedrooms_pb' => $prop['BedroomsTotal'],
+                                'ffd_city_pb' => $prop['City'],
+                                'ffd_community_features' => $prop['CommunityFeatures'],
+                                'ffd_createddate' => $prop['OnMarketDate'],
+                                'ffd_description_pb' => $prop['PublicRemarks'],
+                                'ffd_exterior_features' => $prop['ExteriorFeatures'],
+                                'ffd_halfbathrooms_pb' => $prop['BathroomsHalf'],
+                                'ffd_interior_features' => $prop['InteriorFeatures'],
+                                'ffd_lastmodifieddate' => $prop['ContractStatusChangeDate'],
+                                'ffd_latitude_pb' => $prop['Latitude'],
+                                'ffd_listed_date' => $prop['ListingContractDate'],
+                                'ffd_listing_agent_email' => $prop['ListAgentEmail'],
+                                'ffd_listing_agent_firstname' => $prop['ListAgentFirstName'],
+                                'ffd_listing_agent_lastname' => $prop['ListAgentLastName'],
+                                'ffd_listing_agent_phone' => $prop['ListAgentPreferredPhone'],
+                                'ffd_listingprice_pb' => $prop['ListPrice'],
+                                'ffd_listingtype' => $prop['ListingTerms'],
+                                'ffd_listingofficename' => $prop['ListOfficeName'],
+                                'ffd_listingofficeshortid' => $prop['ListOfficeMlsId'],
+                                'ffd_living_sq_ft' => $prop['LivingArea'],
+                                'ffd_longitude_pb' => $prop['Longitude'],
+                                'ffd_mls_id' => $prop['ListingId'],
+                                'ffd_pets_allowed' => $prop['PetsAllowed'],
+                                'ffd_private_pool' => $prop['PoolFeatures'],
+                                'ffd_propertytype' => $prop['PropertyType'],
+                                'ffd_id' => $prop['ListingKey'],
+                                'ffd_state_pb' => $prop['StateOrProvince'],
+                                'ffd_status' => $prop['StandardStatus'],
+                                'ffd_subdivision' => $prop['SubdivisionName'],
+                                'ffd_taxes' => $prop['TaxAnnualAmount'],
+                                'ffd_name' => ($prop['SubdivisionName'] == null ? '' : $prop['SubdivisionName'] . ' / ') . $prop['City'] . ' ' . $prop['StateOrProvince'] . ' ' . $prop['PostalCode'],
+                                'ffd_total_floors' => $prop['Flooring'],
+                                'ffd_unbranded_virtual_tour' => $prop['VirtualTourURLUnbranded'],
+                                'ffd_view' => $prop['View'],
+                                'ffd_waterfront' => $prop['WaterfrontYN'] ? 'Yes' : 'No',
+                                'ffd_waterfront_features' => $prop['WaterfrontFeatures'],
+                                'ffd_yearbuilt_pb' => $prop['YearBuilt'],
+                                'ffd_postalcode_pb' => $prop['PostalCode'],
+                                'ffd_media' => isset($json_image) ? $json_image : $image_default,
+                                'ffd_salesforce_id' => $prop['ListingKey'],
+                                'ffd_days_on_market' => $prop['DaysOnMarket'],
+                                'ffd_system_source' => 'trestle'
+                            )
+                        );
+
+
+                        //insert into post meta
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_acres_calc', 'meta_value' => $prop['LotSizeAcres']));
+                        //$wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_address_pb', 'meta_value' => $address));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_address_pb', 'meta_value' => $prop['PostalCity'] . ', ' . $prop['StateOrProvince'] . ' ' . $prop['PostalCode']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_fullbathrooms_pb', 'meta_value' => 1 == $prop['BathroomsHalf'] ? $prop['BathroomsFull'] . '.5' : $prop['BathroomsFull']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_bedrooms_pb', 'meta_value' => $prop['BedroomsTotal']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_city_pb', 'meta_value' => $prop['City']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_community_features', 'meta_value' => $prop['LotSizeAcres']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_createddate', 'meta_value' => $prop['OnMarketDate']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_description_pb', 'meta_value' => $prop['PublicRemarks']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_exterior_features', 'meta_value' => $prop['ExteriorFeatures']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_interior_features', 'meta_value' => $prop['InteriorFeatures']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_lastmodifieddate', 'meta_value' => $prop['ContractStatusChangeDate']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_latitude_pb', 'meta_value' => $prop['Latitude']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listed_date', 'meta_value' => $prop['ListingContractDate']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listing_agent_email', 'meta_value' => $prop['ListAgentEmail']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listing_agent_firstname', 'meta_value' => $prop['ListAgentFirstName']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listing_agent_lastname', 'meta_value' => $prop['ListAgentLastName']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listing_agent_phone', 'meta_value' => $prop['ListAgentPreferredPhone']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listingprice_pb', 'meta_value' => $prop['ListPrice']));
+
+                        if (strrpos($prop['PropertyType'], 'Lease')) {
+                            $type = 'Rent';
+                        } else {
+                            $type = 'Sale';
+                        }
+
+                        if (strpos($prop['ListingId'], 'R') === false) {
+                            $mls = str_replace('F', 'FX-', $prop['ListingId']);
+                        } else {
+                            $mls = str_replace('R', 'RX-', $prop['ListingId']);
+                        }
+
+                        $mls = $prop['ListingId'];
+
+                        $name = $prop['SubdivisionName'] . ' / ' . $prop['City'] . ' ' . $prop['StateOrProvince'] . ' ' . $prop['PostalCode'];
+
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listingtype', 'meta_value' => $type));//$prop['ListingTerms']
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listingofficename', 'meta_value' => $prop['ListOfficeName']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listingofficeshortid', 'meta_value' => $prop['ListOfficeMlsId']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_living_sq_ft', 'meta_value' => $prop['LivingArea']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_longitude_pb', 'meta_value' => $prop['Longitude']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_lotsize_pb', 'meta_value' => $prop['LotSizeArea']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_mls_id', 'meta_value' => $mls));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_parkingspaces', 'meta_value' => isset($prop['GarageSpaces']) ? (integer)$prop['GarageSpaces'] : (isset($prop['ParkingTotal']) ? (integer)$prop['ParkingTotal'] : 0)));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_pets_allowed', 'meta_value' => $prop['PetsAllowed']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_private_pool', 'meta_value' => $prop['PoolFeatures']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_propertytype', 'meta_value' => isset($prop['PropertySubType']) ? $prop['PropertySubType'] : $prop['PropertySubTypeAdditional']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_id', 'meta_value' => $prop['ListingKey']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_state_pb', 'meta_value' => $prop['StateOrProvince']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_status', 'meta_value' => $prop['StandardStatus']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_subdivision', 'meta_value' => $prop['SubdivisionName']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_taxes', 'meta_value' => $prop['TaxAnnualAmount']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_name', 'meta_value' => $name));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_total_floors', 'meta_value' => 0));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_view', 'meta_value' => $prop['View']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_waterfront', 'meta_value' => $prop['WaterfrontYN'] ? 'Yes' : 'No'));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_waterfront_features', 'meta_value' => $prop['WaterfrontFeatures']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_yearbuilt_pb', 'meta_value' => $prop['YearBuilt']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_postalcode_pb', 'meta_value' => $prop['PostalCode']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_media', 'meta_value' => isset($json_image) ? $json_image : $image_default));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_featured_image', 'meta_value' => $ffd_image[0]['MediaURL']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listing_title', 'meta_value' => $name));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_salesforce_id', 'meta_value' => $prop['ListingKey']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_record_is_deleted', 'meta_value' => ''));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_days_on_market', 'meta_value' => $prop['DaysOnMarket']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_unbranded_virtual_tour', 'meta_value' => $prop['VirtualTourURLUnbranded']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_system_source', 'meta_value' => 'trestle'));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_propertysubtype', 'meta_value' => $prop['PropertySubType']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_guid', 'meta_value' => $guid));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_source', 'meta_value' => $prop['SourceSystemID']));
+                        $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_parcel_number', 'meta_value' => $prop['ParcelNumber']));
+
+
                     }
-
-                    $addr = $prop['StreetNumber'] . ' ' . $prop['StreetDirPrefix'] . ' ' . $prop['StreetName'] . ' #' . $prop['UnitNumber'];
-                    $address = ucwords($addr . ' ' . $prop['City'] . ', ' . $prop['StateOrProvince'] . ' ' . $prop['PostalCode']);
-
-                    $city = isset($prop['City']) ? $prop['City'] . '-' : '-';
-                    if ($city != '-')
-                        $city = str_replace(' ', '-', $city);
-
-                    $street = isset($prop['StreetName']) ? $prop['StreetName'] . '-' : '-';
-                    if ($street != '-')
-                        $street = str_replace(' ', '-', $city);
-
-                    $addr_guid = (isset($prop['StreetNumber']) && $prop['StreetNumber'] != '' ? $prop['StreetNumber'] . '-' : '') .
-                        (isset($prop['StreetDirPrefix']) && $prop['StreetDirPrefix'] != '' ? $prop['StreetDirPrefix'] . '-' : '') .
-                        $street .
-                        (isset($prop['UnitNumber']) && $prop['UnitNumber'] != '' ? $prop['UnitNumber'] . '-' : '') .
-                        $city .
-                        (isset($prop['StateOrProvince']) && $prop['StateOrProvince'] != '' ? $prop['StateOrProvince'] . '-' : '') .
-                        (isset($prop['PostalCode']) ? $prop['PostalCode'] : '');
-                    $addr_guid = $prop['ListingKey'].'-'.strtolower($addr_guid);
-
-
-                    $protocol = isset($_SERVER['HTTP_X_FORWARDED_PROTO']) ? $_SERVER['HTTP_X_FORWARDED_PROTO'] : $_SERVER['REQUEST_SCHEME'];
-                    $server_name = isset($_SERVER['HTTP_X_FORWARDED_HOST']) ? $_SERVER['HTTP_X_FORWARDED_HOST'] : $_SERVER['SERVER_NAME'];
-                    $application = isset($_SERVER['CONTEXT_PREFIX']) ? $_SERVER['CONTEXT_PREFIX'] : 'livemodern';
-                    $guid = $protocol . '://' . $server_name . '/' . $application . '/listing/' . $addr_guid . '/';
-                    //insert into posts
-                    $wpdb->insert(
-                        'wp_posts',
-                        array(
-                            'post_author' => '1',
-                            'post_date' => $current_date,
-                            'post_date_gmt' => $current_date,
-                            'post_content' => $prop['PublicRemarks'],
-                            'post_title' => $address,
-                            'post_status' => 'publish',
-                            'comment_status' => 'closed',
-                            'ping_status' => 'closed',
-                            'post_name' => $addr_guid,//$prop['ListingId'],
-                            'post_modified' => $current_date,
-                            'post_modified_gmt' => $current_date,
-                            'guid' => $guid,
-                            'post_type' => 'listing'
-                        )
-                    );
-
-                    $lastid = $wpdb->insert_id;
-                    $image_default = $protocol . '://' . $server_name . $application . '/wp-content/plugins/ffd-integration/legacy-assets/images/placeholder.jpg';
-
-                    $ff_address_short = $prop['PostalCity'].', '.$prop['StateOrProvince'].' '.$prop['PostalCode'];
-
-                    //insert into wp_ffd_listings
-                    $wpdb->insert(
-                        'wp_ffd_listings',
-                        array(
-                            'ID' => $lastid,//'ID' => $prop['ListingKey'],
-                            'post_title' => $address,
-                            'post_type' => 'listing',
-                            'ffd_address_pb' => $ff_address_short,
-                            'ffd_fullbathrooms_pb' => 1 == $prop['BathroomsHalf'] ? $prop['BathroomsFull'] . '.5' : $prop['BathroomsFull'],
-                            'ffd_bedrooms_pb' => $prop['BedroomsTotal'],
-                            'ffd_city_pb' => $prop['City'],
-                            'ffd_community_features' => $prop['CommunityFeatures'],
-                            'ffd_createddate' => $prop['OnMarketDate'],
-                            'ffd_description_pb' => $prop['PublicRemarks'],
-                            'ffd_exterior_features' => $prop['ExteriorFeatures'],
-                            'ffd_halfbathrooms_pb' => $prop['BathroomsHalf'],
-                            'ffd_interior_features' => $prop['InteriorFeatures'],
-                            'ffd_lastmodifieddate' => $prop['ContractStatusChangeDate'],
-                            'ffd_latitude_pb' => $prop['Latitude'],
-                            'ffd_listed_date' => $prop['ListingContractDate'],
-                            'ffd_listing_agent_email' => $prop['ListAgentEmail'],
-                            'ffd_listing_agent_firstname' => $prop['ListAgentFirstName'],
-                            'ffd_listing_agent_lastname' => $prop['ListAgentLastName'],
-                            'ffd_listing_agent_phone' => $prop['ListAgentPreferredPhone'],
-                            'ffd_listingprice_pb' => $prop['ListPrice'],
-                            'ffd_listingtype' => $prop['ListingTerms'],
-                            'ffd_listingofficename' => $prop['ListOfficeName'],
-                            'ffd_listingofficeshortid' => $prop['ListOfficeMlsId'],
-                            'ffd_living_sq_ft' => $prop['LivingArea'],
-                            'ffd_longitude_pb' => $prop['Longitude'],
-                            'ffd_mls_id' => $prop['ListingId'],
-                            'ffd_pets_allowed' => $prop['PetsAllowed'],
-                            'ffd_private_pool' => $prop['PoolFeatures'],
-                            'ffd_propertytype' => $prop['PropertyType'],
-                            'ffd_id' => $prop['ListingKey'],
-                            'ffd_state_pb' => $prop['StateOrProvince'],
-                            'ffd_status' => $prop['StandardStatus'],
-                            'ffd_subdivision' => $prop['SubdivisionName'],
-                            'ffd_taxes' => $prop['TaxAnnualAmount'],
-                            'ffd_name' => ($prop['SubdivisionName'] == null ? '' : $prop['SubdivisionName'] . ' / ') . $prop['City'] . ' ' . $prop['StateOrProvince'] . ' ' . $prop['PostalCode'],
-                            'ffd_total_floors' => $prop['Flooring'],
-                            'ffd_unbranded_virtual_tour' => $prop['VirtualTourURLUnbranded'],
-                            'ffd_view' => $prop['View'],
-                            'ffd_waterfront' => $prop['WaterfrontYN'] ? 'Yes' : 'No',
-                            'ffd_waterfront_features' => $prop['WaterfrontFeatures'],
-                            'ffd_yearbuilt_pb' => $prop['YearBuilt'],
-                            'ffd_postalcode_pb' => $prop['PostalCode'],
-                            'ffd_media' => isset($json_image) ? $json_image : $image_default,
-                            'ffd_salesforce_id' => $prop['ListingKey'],
-                            'ffd_days_on_market' => $prop['DaysOnMarket'],
-                            'ffd_system_source' => 'trestle'
-                        )
-                    );
-
-
-                    //insert into post meta
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_acres_calc', 'meta_value' => $prop['LotSizeAcres']));
-                    //$wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_address_pb', 'meta_value' => $address));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_address_pb', 'meta_value' => $prop['PostalCity'].', '.$prop['StateOrProvince'].' '.$prop['PostalCode']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_fullbathrooms_pb', 'meta_value' => 1 == $prop['BathroomsHalf'] ? $prop['BathroomsFull'] . '.5' : $prop['BathroomsFull']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_bedrooms_pb', 'meta_value' => $prop['BedroomsTotal']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_city_pb', 'meta_value' => $prop['City']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_community_features', 'meta_value' => $prop['LotSizeAcres']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_createddate', 'meta_value' => $prop['OnMarketDate']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_description_pb', 'meta_value' => $prop['PublicRemarks']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_exterior_features', 'meta_value' => $prop['ExteriorFeatures']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_interior_features', 'meta_value' => $prop['InteriorFeatures']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_lastmodifieddate', 'meta_value' => $prop['ContractStatusChangeDate']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_latitude_pb', 'meta_value' => $prop['Latitude']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listed_date', 'meta_value' => $prop['ListingContractDate']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listing_agent_email', 'meta_value' => $prop['ListAgentEmail']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listing_agent_firstname', 'meta_value' => $prop['ListAgentFirstName']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listing_agent_lastname', 'meta_value' => $prop['ListAgentLastName']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listing_agent_phone', 'meta_value' => $prop['ListAgentPreferredPhone']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listingprice_pb', 'meta_value' => $prop['ListPrice']));
-
-                    if (strrpos($prop['PropertyType'], 'Lease')) {
-                        $type = 'Rent';
-                    } else {
-                        $type = 'Sale';
-                    }
-
-                    if (strpos($prop['ListingId'], 'R') === false) {
-                        $mls = str_replace('F', 'FX-', $prop['ListingId']);
-                    } else {
-                        $mls = str_replace('R', 'RX-', $prop['ListingId']);
-                    }
-
-                    $mls = $prop['ListingId'];
-
-                    $name = $prop['SubdivisionName'] . ' / ' . $prop['City'] . ' ' . $prop['StateOrProvince'] . ' ' . $prop['PostalCode'];
-
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listingtype', 'meta_value' => $type));//$prop['ListingTerms']
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listingofficename', 'meta_value' => $prop['ListOfficeName']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listingofficeshortid', 'meta_value' => $prop['ListOfficeMlsId']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_living_sq_ft', 'meta_value' => $prop['LivingArea']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_longitude_pb', 'meta_value' => $prop['Longitude']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_lotsize_pb', 'meta_value' => $prop['LotSizeArea']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_mls_id', 'meta_value' => $mls));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_parkingspaces', 'meta_value' => isset($prop['GarageSpaces']) ? (integer)$prop['GarageSpaces'] : (isset($prop['ParkingTotal']) ? (integer)$prop['ParkingTotal'] : 0)));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_pets_allowed', 'meta_value' => $prop['PetsAllowed']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_private_pool', 'meta_value' => $prop['PoolFeatures']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_propertytype', 'meta_value' => isset($prop['PropertySubType']) ? $prop['PropertySubType'] : $prop['PropertySubTypeAdditional']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_id', 'meta_value' => $prop['ListingKey']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_state_pb', 'meta_value' => $prop['StateOrProvince']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_status', 'meta_value' => $prop['StandardStatus']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_subdivision', 'meta_value' => $prop['SubdivisionName']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_taxes', 'meta_value' => $prop['TaxAnnualAmount']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_name', 'meta_value' => $name));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_total_floors', 'meta_value' => 0));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_view', 'meta_value' => $prop['View']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_waterfront', 'meta_value' => $prop['WaterfrontYN'] ? 'Yes' : 'No'));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_waterfront_features', 'meta_value' => $prop['WaterfrontFeatures']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_yearbuilt_pb', 'meta_value' => $prop['YearBuilt']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_postalcode_pb', 'meta_value' => $prop['PostalCode']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_media', 'meta_value' => isset($json_image) ? $json_image : $image_default));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_featured_image', 'meta_value' => $ffd_image[0]['MediaURL']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_listing_title', 'meta_value' => $name));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_salesforce_id', 'meta_value' => $prop['ListingKey']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_record_is_deleted', 'meta_value' => ''));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_days_on_market', 'meta_value' => $prop['DaysOnMarket']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_unbranded_virtual_tour', 'meta_value' => $prop['VirtualTourURLUnbranded']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_system_source', 'meta_value' => 'trestle'));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_propertysubtype', 'meta_value' => $prop['PropertySubType']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_guid', 'meta_value' => $guid));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_source', 'meta_value' => $prop['SourceSystemID']));
-                    $wpdb->insert('wp_postmeta', array('post_id' => $lastid, 'meta_key' => 'ffd_parcel_number', 'meta_value' => $prop['ParcelNumber']));
-
-
                 }
-            }*/
+            }
 
 
 //                else{
@@ -1959,7 +1961,7 @@ class FFD_Integration_Search {
 
                 }
             }
-            echo json_encode(array('listings' => $data, 'meta' => array('limit' => $limit, 'offset' => $offset), 'paginator' => $this->paginator, 'number_properties' => $this->number_properties));
+            echo json_encode(array('listings' => $data, 'meta' => array('limit' => $limit, 'offset' => $offset), 'paginator' => $this->paginator, 'number_properties' => $this->number_properties, 'listingprice' => $this->listingprice));
         } else {
             wp_send_json_error($data);
         }
@@ -2082,7 +2084,7 @@ class FFD_Integration_Search {
 
 
     public function query_ffd_search_data( array $select=array(), array $where=array(), string $order, $limit=null, $offset=null, $return_json=true, $queryObject){
-
+//var_dump('$where',$where);exit;
         global $wpdb;
         $destination_table = $this->tablename;
         $destination_alias = 'listing';
@@ -2110,6 +2112,9 @@ class FFD_Integration_Search {
 
         $where_clause = "";
         $select_clause = "";//var_dump('$where', $where);exit;
+        $where_meta = array(); //query principal and
+        $meta_query = array(); //query url
+        $where_meta_or = array('relation' => 'OR'); //query principal or
         if( !empty($where) ){
             $where_clause = " WHERE 1=1 ";
             $first_where_clause = true;
@@ -2121,10 +2126,13 @@ class FFD_Integration_Search {
             $whereIterator->rewind();
             $whereIterator->next(); // put the initial pointer to 2nd position
 
-            foreach($where as $column => $value){
+            foreach($where as $column => $value){ //var_dump('$column', $column);var_dump('$value',$value);
                 $nextcolumn = $whereIterator->key();
                 $nextvalue = $whereIterator->current();
 
+                $field_name = $column;
+                //var_dump('$meta_keys',$meta_keys);
+                //var_dump('$column',$column);
                 if($column == 'poly'){
 
                     $latlng_query = " SELECT lat, lng FROM " . $destination_table . " WHERE lat!='' AND lng!='';";
@@ -2140,12 +2148,26 @@ class FFD_Integration_Search {
                         $first_sub_clause = true;
                         foreach($value as $_value ){
 
-                            $build_condition = $this->build_where_condition($_value, 'db', $column);
+                            $build_condition = $this->build_where_condition($_value, 'db', $column);//var_dump('$field_name',$field_name,'$build_condition 1',$build_condition);
                             $value = $build_condition['value'];
                             $relation = $build_condition['relation'];
                             $compare = $build_condition['compare'];
                             $type = $build_condition['type'];
                             $type = $this->get_cast_for_type($type);
+
+                            /********************************************** Normal Filtering ***********************************************/
+                            if ( $relation == 'AND' ) {
+                                $where_meta[] = array(
+                                    'relation' => 'AND',
+                                    array(
+                                        'key' => $field_name,
+                                        'value' => str_replace(array('\'', '"'), '', $value),
+                                        'compare' => $compare,
+                                        'type' => $type
+                                    )
+                                );
+                            }
+                            /********************************************** Normal Filtering ***********************************************/
 
                             if( $first_sub_clause ){
                                 $relation = " AND ";
@@ -2172,12 +2194,35 @@ class FFD_Integration_Search {
 
                         $next_condition = $this->build_where_condition($nextvalue, 'db', $column);
 
-                        $build_condition = $this->build_where_condition($value, 'db', $column);
+                        $build_condition = $this->build_where_condition($value, 'db', $column); //var_dump('$field_name',$field_name,'$build_condition 2',$build_condition);
                         $value = $build_condition['value'];
                         $relation = $build_condition['relation'];
                         $compare = $build_condition['compare'];
                         $type = $build_condition['type'];
                         $type = $this->get_cast_for_type($type);
+
+                        /********************************************** Normal Filtering ***********************************************/
+                        if ( $relation == 'AND' && $field_name != 'ffd_city_pb' ) {
+                            $where_meta[] = array(
+                                'relation' => $relation,
+                                array(
+                                    'key' => $field_name,
+                                    'value' => str_replace(array('\'', '"','%'), '', $value),
+                                    'compare' => $compare,
+                                    'type' => $type
+                                )
+                            );
+                        }else{ //
+                            array_push($where_meta_or, array(
+                                'key' => $field_name,
+                                'value' => str_replace(array('\'%', '%\''), '', $value),
+                                'compare' => $compare,
+                                'type' => $type
+
+                            ));
+
+                        }
+                        /********************************************** Normal Filtering ***********************************************/
 
                         if( $first_where_clause ){
                             $relation = " AND ";
@@ -2210,7 +2255,7 @@ class FFD_Integration_Search {
                 $whereIterator->next();
 
             }
-        }
+        } $where_meta[] = $where_meta_or;
 
         $order_clause = '';
 
@@ -2280,6 +2325,39 @@ class FFD_Integration_Search {
         $wp_query = '';
 
         if( isset($queryObject) && !is_null($queryObject) ) {
+
+
+            if (isset($queryObject["fs"]) && $queryObject["fs"] != "") {
+
+                $meta_query[] = array(
+                    'relation' => 'OR',
+                    array(
+                        'key' => 'ffd_city_pb',
+                        'value' => $queryObject["fs"],
+                        'compare' => 'LIKE'
+                    ),
+                    array(
+                        'key' => 'ffd_postalcode_pb',
+                        'value' => $queryObject["fs"],
+                        'compare' => 'LIKE'
+                    ),
+                    array(
+                        'key'     => 'ffd_mls_id',
+                        'value'   => $queryObject["fs"],
+                        'compare' => 'LIKE'
+                    ),
+                    array(
+                        'key'     => 'ffd_address_pb',
+                        'value'   => $queryObject["fs"],
+                        'compare' => 'LIKE'
+                    )
+
+                );
+
+            }
+
+
+
             //ffd_listingprice_pb
             if (isset($queryObject["ffd_listingprice_pb"]) && $queryObject["ffd_listingprice_pb"] != "") {
                 $values = explode(' ', $queryObject["ffd_listingprice_pb"]);
@@ -2619,20 +2697,21 @@ class FFD_Integration_Search {
                 )
             );
 
-            $args=array(
+            /*$args=array(
                 'post_type' =>  'listing',
                 'post_status' => 'publish',
                 'meta_query' => $meta_query,
                 'cache_results'=> false,
-                'posts_per_page'=>100,
+                'posts_per_page'=>-1,
                 'fields' => 'ids'
             );
 
-            $wp_query = new WP_Query($args);
+            $wp_query = new WP_Query($args);*/
 
         }
-        //var_dump('$query',$query);exit;
+        /********************************************begin meta_query*******************************************/
 
+        /******************************************* master *****************************************/
         $size_where = 0;
         foreach ($where as $w){
             if(is_array($w)){
@@ -2643,32 +2722,129 @@ class FFD_Integration_Search {
 
         }
 
+        $lm_master_search = json_decode(get_option('ap_master_search'), true);
         $lm_where = '';
-        if($size_where == 2) {
-            if (!isset($queryObject) && is_null($queryObject)) {//empty($query_where)
-                $lm_master_search = json_decode(get_option('ap_master_search'), true);
+        //if($size_where == 2) {
+            //if (!isset($queryObject) && is_null($queryObject)) {//empty($query_where)
 
-                foreach ($lm_master_search as $key => $search) {
-                    /*if ($key == 'ffd_architectural_style' and ($search != 'None' or $search != '')) {
-                        $lm_where .= " AND ". $key . "='" . $search . "'";
-                    } else */
-                    if ($key == 'ffd_listingprice_pb' and $search != '') {
-                        $lm_where .= " and " . $key . ">=" . $search;
+                $communities = array();
+                $parcel_number = array();
+
+
+                if (isset($lm_master_search["ffd_community"]) && $lm_master_search["ffd_community"] != "" && !empty($lm_master_search["ffd_community"]) ) {
+
+                    $communities_meta = array();
+                    foreach($lm_master_search["ffd_community"] as $community) {
+                        //$communities[] = $community["name_community"];
+                        $parcel_number[] = $community["parcel_number"];
+
+                        $communities_meta[] = array(
+                            'key' => 'ffd_subdivision',
+                            'value' => $community["name_community"],
+                            'compare' => 'like'
+                        );
                     }
+
+                    $where_meta[] = array_merge(array(
+                        'relation' => 'OR',
+                        array(
+                            'key' => 'ffd_parcel_number',
+                            'value' => $parcel_number,
+                            'compare' => 'in'
+                        )
+                    ),$communities_meta);
+
                 }
-            }
+
+                if (isset($lm_master_search["ffd_architectural_style"]) && $lm_master_search["ffd_architectural_style"] != "None" && $lm_master_search["ffd_architectural_style"] != ""){
+                    $values = explode(',', $queryObject["ffd_architectural_style"]);
+                    $where_meta[] = array(
+                        'relation' => 'AND',
+                        array(
+                            'key'     => 'ffd_architectural_style',
+                            'value'   => $values,
+                            'compare' => 'in'
+                        )
+                    );
+                }
+
+                if (isset($lm_master_search["ffd_listings"]) && $lm_master_search["ffd_listings"] != "" ){
+                    $values = explode(',', $lm_master_search["ffd_listings"]);
+                    $where_meta[] = array(
+                        'relation' => 'AND',
+                        array(
+                            'key'     => 'ffd_mls_id',
+                            'value'   => $values,
+                            'compare' => 'in'
+                        )
+                    );
+                }
+
+                if (isset($lm_master_search["ffd_property_type"]) && $lm_master_search["ffd_property_type"] != "" ){
+                    $values = explode(',', $lm_master_search["ffd_property_type"]);
+                    $where_meta[] = array(
+                        'relation' => 'AND',
+                        array(
+                            'key'     => 'ffd_propertytype',
+                            'value'   => $values,
+                            'compare' => 'in'
+                        )
+                    );
+                }
+
+                if (isset($lm_master_search["ffd_listingprice_pb"]) && $lm_master_search["ffd_listingprice_pb"] != "" ){
+                    $where_meta[] = array(
+                        'relation' => 'AND',
+                        array(
+                            'key'     => 'ffd_listingprice_pb',
+                            'value'   => $lm_master_search["ffd_listingprice_pb"],
+                            'compare' => '>=',
+                            'type' => 'numeric'
+                        )
+                    );
+                }
+
+        if (isset($lm_master_search["ffd_yearbuilt_pb"]) && $lm_master_search["ffd_yearbuilt_pb"] != "" ){
+
+            $where_meta[] = array(
+                'relation' => 'AND',
+                array(
+                    'key'     => 'ffd_yearbuilt_pb',
+                    'value'   => $lm_master_search["ffd_yearbuilt_pb"],
+                    'compare' => '>='
+                )
+            );
         }
 
+                $this->listingprice = $lm_master_search["ffd_listingprice_pb"];
+
+                $args=array(
+                    'post_type' =>  'listing',
+                    'post_status' => 'publish',
+                    'meta_query' => array_merge( $where_meta , $meta_query ),
+                    'cache_results'=> false,
+                    'posts_per_page'=>-1,
+                    'fields' => 'ids',
+                    'offset' => 0
+                );
+
+                $wp_query = new WP_Query($args); //var_dump($wp_query->request);exit;
+            //}
+        //}
+
+        /******************************************* master *****************************************/
         $where_clause .=  $lm_where;
         $where_clause .=  $query_where;
 
+        //var_dump('$where_meta', $wp_query);exit;
         /************************************************* TOTAL LISTING *************************************************/
 
-        $query = "SELECT count(ID) FROM " . $destination_table . " as ".$destination_alias." " . $where_clause;
+        //$query = "SELECT count(ID) FROM " . $destination_table . " as ".$destination_alias." " . $where_clause;
 
         $page = (int)(!isset($_REQUEST['page'])) ? 1 : $_REQUEST['page'];
 
-        $total_registration = $wpdb->get_var($query);
+        //$total_registration = $wpdb->get_var($query);
+        $total_registration = $wp_query->post_count;
 
         $total_number_records = ceil(intval($total_registration) / $limit);
 
@@ -2748,16 +2924,30 @@ class FFD_Integration_Search {
         $order_clause  = apply_filters('ffd_search_query_order', $order_clause, $order);
         $limit_clause  = apply_filters('ffd_search_query_limit', $limit_clause, $limit, $offset);
 
-        if( isset($queryObject) && !is_null($queryObject) ) {
+
+        /*if( isset($queryObject) && !is_null($queryObject) ) {
            $query = $wp_query->request;
-        }else{
-            $query = $select_clause . " FROM " . $destination_table . " as ".$destination_alias." " . $where_clause . $order_clause . $limit_clause;
-        }
+        }else{*/
+
+            $args=array(
+                'post_type' =>  'listing',
+                'post_status' => 'publish',
+                'meta_query' => array_merge( $where_meta , $meta_query ),
+                'cache_results'=> false,
+                'posts_per_page'=>$limit,
+                'fields' => 'ids',
+                'offset' => $offset
+            );
+
+            $wp_query = new WP_Query($args); //var_dump($wp_query->request);exit;
+            $query = $wp_query->request;
+            //$query = $select_clause . " FROM " . $destination_table . " as ".$destination_alias." " . $where_clause . $order_clause . $limit_clause;
+        //}
 
         //var_dump($query);exit;
         $query = apply_filters('ffd_search_query_sql', $query);
         $data = $wpdb->get_results($query, "ARRAY_A");
-
+//var_dump('$data', $data);exit;
         //echo $query;  exit;
 
         do_action('ffd_logger', array('[FFD SEARCH Query]' => $query, 'error'=>$wpdb->last_error));

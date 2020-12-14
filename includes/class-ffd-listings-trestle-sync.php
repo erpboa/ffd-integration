@@ -2393,6 +2393,8 @@ class FFD_Listings_Trestle_Sync extends FFD_Trestle_API {
             $fields['ffd_media'] = 'ffd_media';
             $fields['ffd_salesforce_id'] = 'ffd_salesforce_id';
             $fields['ffd_mls_id'] = 'ffd_mls_id';
+            $fields['ffd_postalcode_pb'] = 'ffd_postalcode_pb';
+            $fields['ffd_address_pb'] = 'ffd_address_pb';
             $fields['ffd_system_source'] = 'ffd_system_source';
         }
         return $fields;
